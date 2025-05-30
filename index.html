@@ -175,8 +175,22 @@
     }
 
     let activePlanetIndex = 0; // Tracks the currently active planet
+    let isPaused = false;      // Animation pause flag
+    let showMessage = false;
 
     function animate() {
+      if (isPaused) {
+        if (showMessage) {
+          // Draw paused frame with message
+          const planet = planets[activePlanetIndex];
+          const x = (planet.x / planet.z) * canvas.width + canvas.width / 2;
+          const y = (planet.y / planet.z) * canvas.height + canvas.height / 2;
+          const size = planet.size / planet.z * 100;
+          drawMessageBox(x, y, size);
+        }
+        return;
+      }
+      showMessage = false;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       stars.forEach(star => {
         star.update();
@@ -193,6 +207,191 @@
     initStars();
     initPlanets();
     animate();
+
+    canvas.addEventListener('touchstart', (e) => {
+      if (!isPaused) {
+        isPaused = true;
+        return;
+      }
+      // If message box is showing, hide it and resume animation
+      if (showMessage) {
+        showMessage = false;
+        isPaused = false;
+        animate();
+        return;
+      }
+      // If paused, check if touch is on planet
+      const planet = planets[activePlanetIndex];
+      const rect = canvas.getBoundingClientRect();
+      const touch = e.touches[0];
+      const touchX = touch.clientX - rect.left;
+      const touchY = touch.clientY - rect.top;
+
+      const x = (planet.x / planet.z) * canvas.width + canvas.width / 2;
+      const y = (planet.y / planet.z) * canvas.height + canvas.height / 2;
+      const size = planet.size / planet.z * 100;
+
+      if (Math.hypot(touchX - x, touchY - y) <= size) {
+        showMessage = true;
+        drawMessageBox(x, y, size);
+      } else {
+        showMessage = false;
+        animate();
+      }
+    });
+
+    function drawMessageBox(x, y, size) {
+      // Redraw everything
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      stars.forEach(star => star.draw());
+      planets[activePlanetIndex].draw();
+
+      // Message box settings
+      const maxBoxWidth = 240;
+      const padding = 12;
+      const fontSize = 13;
+      const lineHeight = fontSize * 1.5;
+      const message = 'The sun dipped below the horizon, casting a warm golden glow over the tranquil lake. The water shimmered like a thousand diamonds, reflecting the hues of orange and pink that painted the sky.\nA gentle breeze rustled the leaves of the nearby trees, creating a soothing melody that echoed through the quiet evening';
+
+      // Word wrap function
+      function wrapText(text, maxWidth) {
+        const lines = [];
+        const paragraphs = text.split('\n');
+        ctx.font = `${fontSize}px Arial`;
+        for (const paragraph of paragraphs) {
+          let words = paragraph.split(' ');
+          let line = '';
+          for (let n = 0; n < words.length; n++) {
+            let testLine = line + words[n] + ' ';
+            let metrics = ctx.measureText(testLine);
+            let testWidth = metrics.width;
+            if (testWidth > maxWidth - 2 * padding && n > 0) {
+              lines.push(line.trim());
+              line = words[n] + ' ';
+            } else {
+              line = testLine;
+            }
+          }
+          lines.push(line.trim());
+        }
+        return lines;
+      }
+
+      // Wrap the message text
+      const lines = wrapText(message, maxBoxWidth);
+      const boxHeight = lines.length * lineHeight + 2 * padding;
+      const boxWidth = maxBoxWidth;
+
+      // Calculate available space in each direction
+      const spaceAbove = y - size - 18;
+      const spaceBelow = canvas.height - (y + size + 18);
+      const spaceLeft = x - size - 18;
+      const spaceRight = canvas.width - (x + size + 18);
+
+      // Find the direction with the most space that fits the box
+      let direction = 'above';
+      let maxSpace = spaceAbove;
+
+      if (spaceRight > maxSpace && spaceRight >= boxWidth) {
+        direction = 'right';
+        maxSpace = spaceRight;
+      }
+      if (spaceLeft > maxSpace && spaceLeft >= boxWidth) {
+        direction = 'left';
+        maxSpace = spaceLeft;
+      }
+      if (spaceBelow > maxSpace && spaceBelow >= boxHeight) {
+        direction = 'below';
+        maxSpace = spaceBelow;
+      }
+
+      // Default positions
+      let boxX = x - boxWidth / 2;
+      let boxY = y - size - boxHeight - 18;
+      let anchorX = x;
+      let anchorY = y - size;
+
+      if (direction === 'right') {
+        boxX = x + size + 18;
+        boxY = y - boxHeight / 2;
+        anchorX = x + size;
+        anchorY = y;
+      } else if (direction === 'left') {
+        boxX = x - size - 18 - boxWidth;
+        boxY = y - boxHeight / 2;
+        anchorX = x - size;
+        anchorY = y;
+      } else if (direction === 'below') {
+        boxX = x - boxWidth / 2;
+        boxY = y + size + 18;
+        anchorX = x;
+        anchorY = y + size;
+      }
+
+      // Clamp box inside canvas
+      if (boxX < 0) boxX = 0;
+      if (boxX + boxWidth > canvas.width) boxX = canvas.width - boxWidth;
+      if (boxY < 0) boxY = 0;
+      if (boxY + boxHeight > canvas.height) boxY = canvas.height - boxHeight;
+
+      // Draw box
+      ctx.save();
+      ctx.fillStyle = 'rgba(30,30,30,0.95)';
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 8);
+      ctx.fill();
+      ctx.stroke();
+
+      // Draw anchor (triangle) from box to planet
+      ctx.beginPath();
+      if (direction === 'above') {
+        // Anchor from bottom center of box to planet top
+        const anchorBaseX = Math.max(boxX + 12, Math.min(x, boxX + boxWidth - 12));
+        const anchorBaseY = boxY + boxHeight;
+        ctx.moveTo(anchorBaseX - 10, anchorBaseY);
+        ctx.lineTo(anchorX, anchorY);
+        ctx.lineTo(anchorBaseX + 10, anchorBaseY);
+      } else if (direction === 'below') {
+        // Anchor from top center of box to planet bottom
+        const anchorBaseX = Math.max(boxX + 12, Math.min(x, boxX + boxWidth - 12));
+        const anchorBaseY = boxY;
+        ctx.moveTo(anchorBaseX - 10, anchorBaseY);
+        ctx.lineTo(anchorX, anchorY);
+        ctx.lineTo(anchorBaseX + 10, anchorBaseY);
+      } else if (direction === 'right') {
+        // Anchor from left center of box to planet right
+        const anchorBaseX = boxX;
+        const anchorBaseY = Math.max(boxY + 12, Math.min(y, boxY + boxHeight - 12));
+        ctx.moveTo(anchorBaseX, anchorBaseY - 10);
+        ctx.lineTo(anchorX, anchorY);
+        ctx.lineTo(anchorBaseX, anchorBaseY + 10);
+      } else if (direction === 'left') {
+        // Anchor from right center of box to planet left
+        const anchorBaseX = boxX + boxWidth;
+        const anchorBaseY = Math.max(boxY + 12, Math.min(y, boxY + boxHeight - 12));
+        ctx.moveTo(anchorBaseX, anchorBaseY - 10);
+        ctx.lineTo(anchorX, anchorY);
+        ctx.lineTo(anchorBaseX, anchorBaseY + 10);
+      }
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(30,30,30,0.95)';
+      ctx.fill();
+      ctx.stroke();
+
+      // Draw wrapped text
+      ctx.fillStyle = 'white';
+      ctx.font = `${fontSize}px Arial`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      let textY = boxY + padding;
+      for (const line of lines) {
+        ctx.fillText(line, boxX + padding, textY);
+        textY += lineHeight;
+      }
+      ctx.restore();
+    }
 
     window.addEventListener('resize', () => {
       canvas.width = window.innerWidth;
