@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,11 +11,13 @@
       overflow: hidden;
       background-color: black;
     }
+
     canvas {
       display: block;
     }
   </style>
 </head>
+
 <body>
   <canvas id="starCanvas"></canvas>
   <script>
@@ -64,6 +67,31 @@
     const sunTexture = new Image();
     sunTexture.src = 'sun.webp'; // Path to the sun texture file
 
+    const venusTexture = new Image();
+    venusTexture.src = '/textures/venus.png';
+
+    const marsTexture = new Image();
+    marsTexture.src = '/textures/mars.png';
+
+    const earthTexture = new Image();
+    earthTexture.src = '/textures/earth.png';
+
+    const jupiterTexture = new Image();
+    jupiterTexture.src = '/textures/jupiter.png';
+
+    const saturnTexture = new Image();
+    saturnTexture.src = '/textures/saturn.webp';
+
+    const mercuryTexture = new Image();
+    mercuryTexture.src = '/textures/mercury.png';
+
+    const neptuneTexture = new Image();
+    neptuneTexture.src = '/textures/neptune.jpg';
+
+    const plutoTexture = new Image();
+    plutoTexture.src = '/textures/pluto2.jpg';
+
+
     class Planet {
       constructor(color, text, extraSize = 0, texture = null, delay = 0) {
         this.color = color;
@@ -89,7 +117,7 @@
       }
 
       update() {
-        this.z -= 1; // Slower movement
+        this.z -= 0.5; // Slower movement
         if (this.z <= 0) {
           this.reset();
           activePlanetIndex = (activePlanetIndex + 1) % planets.length; // Move to the next planet
@@ -132,17 +160,17 @@
     }
 
     function initPlanets() {
-      planets.push(new Planet('purple', 'K3', 0, moonTexture)); // Use moon texture
-      planets.push(new Planet('pink', 'Friendship', 0, moonTexture)); // Use moon texture
-      planets.push(new Planet('pink', 'Water Bus', 0, moonTexture)); 
-      planets.push(new Planet('pink', 'Nha Trang', 0, moonTexture)); 
-      planets.push(new Planet('pink', 'Q1', 0, moonTexture)); 
-      planets.push(new Planet('white', 'Q4', 0, moonTexture)); // Use moon texture
-      planets.push(new Planet('lightcoral', 'Manhwa', 0, moonTexture)); // Use moon texture
+      planets.push(new Planet('purple', 'K3', 0, venusTexture)); // Use moon texture
+      planets.push(new Planet('pink', 'Friendship', 0, marsTexture)); // Use moon texture
+      planets.push(new Planet('pink', 'Water Bus', 0, saturnTexture));
+      // planets.push(new Planet('pink', 'Nha Trang', 0, moonTexture));
+      planets.push(new Planet('pink', 'Q1', 0, earthTexture));
+      planets.push(new Planet('lightcoral', 'Manhwa', 0, jupiterTexture)); // Use moon texture
       planets.push(new Planet('green', 'Thương', 0, moonTexture)); // Use moon texture
-      planets.push(new Planet('pink', 'Mũi Né', 0, moonTexture)); 
-      planets.push(new Planet('pink', 'Cần Giờ', 0, moonTexture)); 
-      planets.push(new Planet('blue', 'Soul', 0, moonTexture)); // Use moon texture
+      planets.push(new Planet('pink', 'Mũi Né', 0, neptuneTexture));
+      planets.push(new Planet('white', 'Q4', 0, saturnTexture)); // Use moon texture
+      planets.push(new Planet('pink', 'Cần Giờ', 0, mercuryTexture));
+      planets.push(new Planet('blue', 'Soul', 0, plutoTexture)); // Use moon texture
       planets.push(new Planet('yellow', 'S ♡ K', 10, sunTexture)); // Use sun texture for "I Love You" planet
     }
 
@@ -173,4 +201,5 @@
     });
   </script>
 </body>
+
 </html>
