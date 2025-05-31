@@ -94,13 +94,14 @@
 
 
     class Planet {
-      constructor(color, text, extraSize = 0, texture = null, delay = 0) {
+      constructor(color, text, extraSize = 0, texture = null, delay = 0, message = '') {
         this.color = color;
         this.text = text;
         this.extraSize = extraSize; // Additional size for the planet
         this.texture = texture; // Texture image for the planet
         this.delay = delay; // Delay before the planet appears
         this.elapsedTime = 0; // Tracks elapsed time since animation started
+        this.message = message; // <-- Add this line
         this.reset();
       }
 
@@ -161,18 +162,18 @@
     }
 
     function initPlanets() {
-      planets.push(new Planet('purple', 'K3', 0, venusTexture)); // Use moon texture
-      planets.push(new Planet('pink', 'Friendship', 0, marsTexture)); // Use moon texture
-      planets.push(new Planet('pink', 'Water Bus', 0, saturnTexture));
-      // planets.push(new Planet('pink', 'Nha Trang', 0, moonTexture));
-      planets.push(new Planet('pink', 'Q1', 0, earthTexture));
-      planets.push(new Planet('lightcoral', 'Manhwa', 0, jupiterTexture)); // Use moon texture
-      planets.push(new Planet('green', 'Thương', 0, moonTexture)); // Use moon texture
-      planets.push(new Planet('pink', 'Mũi Né', 0, neptuneTexture));
-      planets.push(new Planet('white', 'Q4', 0, saturnTexture)); // Use moon texture
-      planets.push(new Planet('pink', 'Cần Giờ', 0, mercuryTexture));
-      planets.push(new Planet('blue', 'Soul', 0, plutoTexture)); // Use moon texture
-      planets.push(new Planet('yellow', 'S ♡ K', 10, sunTexture)); // Use sun texture for "I Love You" planet
+      planets.push(new Planet('purple', 'K3', 0, venusTexture, 0, 'Welcome to planet K3!'));
+      planets.push(new Planet('pink', 'Friendship', 0, marsTexture, 0, 'This is the Friendship planet.'));
+      planets.push(new Planet('pink', 'Water Bus', 0, saturnTexture, 0, 'Hop on the Water Bus!'));
+      // planets.push(new Planet('pink', 'Nha Trang', 0, moonTexture, 0, 'Nha Trang is beautiful!'));
+      planets.push(new Planet('pink', 'Q1', 0, earthTexture, 0, 'Welcome to Q1!'));
+      planets.push(new Planet('lightcoral', 'Manhwa', 0, jupiterTexture, 0, 'Manhwa planet for comic lovers.'));
+      planets.push(new Planet('green', 'Thương', 0, moonTexture, 0, 'Thương means love.'));
+      planets.push(new Planet('pink', 'Mũi Né', 0, neptuneTexture, 0, 'Enjoy the beaches of Mũi Né.'));
+      planets.push(new Planet('white', 'Q4', 0, saturnTexture, 0, 'Q4 is peaceful.'));
+      planets.push(new Planet('pink', 'Cần Giờ', 0, mercuryTexture, 0, 'Cần Giờ - the green lung of Saigon.'));
+      planets.push(new Planet('blue', 'Soul', 0, plutoTexture, 0, 'Soul planet for dreamers.'));
+      planets.push(new Planet('yellow', 'S ♡ K', 10, sunTexture, 0, 'S ♡ K - The planet of love!'));
     }
 
     let activePlanetIndex = 0; // Tracks the currently active planet
@@ -234,6 +235,7 @@
 
       if (Math.hypot(touchX - x, touchY - y) <= size) {
         showMessage = true;
+        shouldRestartTyping = true; // <-- set this flag
         drawMessageBox(x, y, size);
       } else {
         showMessage = false;
@@ -241,23 +243,30 @@
       }
     });
 
-    function drawMessageBox(x, y, size) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      stars.forEach(star => star.draw());
-      planets[activePlanetIndex].draw();
+    // Add this at the top level
+    let shouldRestartTyping = false;
 
-      // Message box settings
-      const maxBoxWidth = 300;
-      const padding = 16;
-      const fontSize = 14;
-      const lineHeight = 18;
-      const message = 'This is a neon-style message box!\nYou can put any text here.\nIt will wrap and look cool.';
+    // Add these variables at the top-level (outside drawMessageBox)
+    let typingIndex = 0;
+    let typingLines = [];
+    let typingDone = false;
+    let typingStartTime = 0;
+    let typingSpeed = 30; // ms per character
+    let cursorVisible = true;
+    let lastCursorBlink = 0;
+    const cursorBlinkInterval = 500; // ms
 
-      // Word wrap function
+    function startTypingEffect(message, fontSize, maxBoxWidth, padding) {
+      typingIndex = 0;
+      typingDone = false;
+      typingStartTime = performance.now();
+      typingLines = [];
+
+      // Word wrap function (same as before)
       function wrapText(text, maxWidth) {
         const lines = [];
         const paragraphs = text.split('\n');
-        ctx.font = `${fontSize}px monospace`;
+        ctx.font = `${fontSize}px "VT323", "Share Tech Mono", "Orbitron", "Courier New", monospace`;
         for (const paragraph of paragraphs) {
           let words = paragraph.split(' ');
           let line = '';
@@ -277,13 +286,53 @@
         return lines;
       }
 
-      // Wrap the message text
-      const lines = wrapText(message, maxBoxWidth);
-      const boxHeight = lines.length * lineHeight + 2 * padding;
-      const boxWidth = maxBoxWidth;
+      typingLines = wrapText(message, maxBoxWidth);
+    }
 
-      // Move the box farther above the planet for a clear connector
-      const connectorLength = 80; // distance from planet to box
+    function drawMessageBox(x, y, size) {
+      const planet = planets[activePlanetIndex];
+      const maxBoxWidth = 300;
+      const padding = 16;
+      const fontSize = 14;
+      const lineHeight = 18;
+      const message = planet.message || 'This is a neon-style message box!\nYou can put any text here.\nIt will wrap and look cool.';
+
+      // Only restart typing effect if needed
+      if (shouldRestartTyping) {
+        startTypingEffect(message, fontSize, maxBoxWidth, padding);
+        shouldRestartTyping = false;
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      stars.forEach(star => star.draw());
+      planets[activePlanetIndex].draw();
+
+      // Calculate how many characters to show
+      let now = performance.now();
+      let charsToShow = Math.floor((now - typingStartTime) / typingSpeed);
+      let totalChars = typingLines.join('\n').length;
+      if (charsToShow >= totalChars) {
+        charsToShow = totalChars;
+        typingDone = true;
+      }
+
+      // Prepare lines with typing effect
+      let displayLines = [];
+      let charsLeft = charsToShow;
+      for (let line of typingLines) {
+        if (charsLeft >= line.length) {
+          displayLines.push(line);
+          charsLeft -= line.length + 1; // +1 for the newline
+        } else {
+          displayLines.push(line.slice(0, Math.max(0, charsLeft)));
+          break;
+        }
+      }
+
+      // Outer neon box
+      const boxHeight = typingLines.length * lineHeight + 2 * padding;
+      const boxWidth = maxBoxWidth;
+      const connectorLength = 80;
       let boxX = x - boxWidth / 2;
       let boxY = y - size - boxHeight - connectorLength;
       let anchorX = x;
@@ -294,7 +343,6 @@
       if (boxX + boxWidth > canvas.width) boxX = canvas.width - boxWidth;
       if (boxY < 0) boxY = 0;
 
-      // Outer neon box
       ctx.save();
       ctx.strokeStyle = '#00f6ff';
       ctx.lineWidth = 3;
@@ -303,67 +351,57 @@
       ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 12);
       ctx.stroke();
 
-      ctx.shadowBlur = 0; // Disable shadow for inner details
+      ctx.shadowBlur = 0;
 
-      // Draw an equilateral triangle at each corner, pointing outward from the box
+      // Draw equilateral triangles at corners
       ctx.fillStyle = '#00f6ff';
-      const triSize = 10; // Smaller side length of the equilateral triangle
+      const triSize = 10;
       const triHeight = triSize * Math.sqrt(3) / 2;
 
-      // Top-left corner (points to top-left)
+      // Top-left
       ctx.beginPath();
-      ctx.moveTo(boxX, boxY); // corner (triangle tip)
+      ctx.moveTo(boxX, boxY);
       ctx.lineTo(boxX - triHeight, boxY + triSize / 2);
       ctx.lineTo(boxX + triSize / 2, boxY - triHeight);
       ctx.closePath();
       ctx.fill();
 
-      // Top-right corner (points to top-right)
+      // Top-right
       ctx.beginPath();
-      ctx.moveTo(boxX + boxWidth, boxY); // corner (triangle tip)
+      ctx.moveTo(boxX + boxWidth, boxY);
       ctx.lineTo(boxX + boxWidth + triHeight, boxY + triSize / 2);
       ctx.lineTo(boxX + boxWidth - triSize / 2, boxY - triHeight);
       ctx.closePath();
       ctx.fill();
 
-      // Bottom-left corner (points to bottom-left)
+      // Bottom-left
       ctx.beginPath();
-      ctx.moveTo(boxX, boxY + boxHeight); // corner (triangle tip)
+      ctx.moveTo(boxX, boxY + boxHeight);
       ctx.lineTo(boxX - triHeight, boxY + boxHeight - triSize / 2);
       ctx.lineTo(boxX + triSize / 2, boxY + boxHeight + triHeight);
       ctx.closePath();
       ctx.fill();
 
-      // Bottom-right corner (points to bottom-right)
+      // Bottom-right
       ctx.beginPath();
-      ctx.moveTo(boxX + boxWidth, boxY + boxHeight); // corner (triangle tip)
+      ctx.moveTo(boxX + boxWidth, boxY + boxHeight);
       ctx.lineTo(boxX + boxWidth + triHeight, boxY + boxHeight - triSize / 2);
       ctx.lineTo(boxX + boxWidth - triSize / 2, boxY + boxHeight + triHeight);
       ctx.closePath();
       ctx.fill();
 
-      // Bottom horizontal lines (optional, keep or remove as you like)
-      ctx.beginPath();
-      for (let i = 0; i < 3; i++) {
-        ctx.moveTo(boxX + 10 + i * 30, boxY + boxHeight + 5);
-        ctx.lineTo(boxX + 30 + i * 30, boxY + boxHeight + 5);
-      }
-      ctx.stroke();
-
-      // Connector line & node (from bottom center of box to planet top)
+      // Connector line & complete triangle pointer
       ctx.beginPath();
       const anchorBaseX = Math.max(boxX + 20, Math.min(x, boxX + boxWidth - 20));
       const anchorBaseY = boxY + boxHeight;
-
-      // Draw a straight connector from the bottom center of the box to the top of the planet
       ctx.moveTo(anchorBaseX, anchorBaseY);
       ctx.lineTo(anchorX, anchorY);
+      ctx.stroke();
 
-      // Draw a complete triangle at the planet anchor for a pointer effect
       ctx.beginPath();
-      ctx.moveTo(anchorX, anchorY); // tip of the triangle (points to planet)
-      ctx.lineTo(anchorX - 10, anchorY - 18); // left base
-      ctx.lineTo(anchorX + 10, anchorY - 18); // right base
+      ctx.moveTo(anchorX, anchorY); // tip
+      ctx.lineTo(anchorX - 10, anchorY - 18);
+      ctx.lineTo(anchorX + 10, anchorY - 18);
       ctx.closePath();
       ctx.fillStyle = '#00f6ff';
       ctx.globalAlpha = 0.85;
@@ -371,20 +409,9 @@
       ctx.globalAlpha = 1.0;
       ctx.stroke();
 
-      // Draw wrapped text
-      ctx.fillStyle = '#00f6ff';
-      ctx.font = `${fontSize}px "VT323", "Share Tech Mono", "Orbitron", "Courier New", monospace`; // Digital font stack
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      let textY = boxY + padding;
-      for (const line of lines) {
-        ctx.fillText(line, boxX + padding, textY);
-        textY += lineHeight;
-      }
-
       // Draw planet name above the outer neon box, aligned left
       ctx.save();
-      ctx.font = `bold 16px "VT323", "Share Tech Mono", "Orbitron", "Courier New", monospace`; // Digital font stack
+      ctx.font = `bold 16px "VT323", "Share Tech Mono", "Orbitron", "Courier New", monospace`;
       ctx.fillStyle = '#00f6ff';
       ctx.textAlign = 'left';
       ctx.textBaseline = 'bottom';
@@ -392,6 +419,36 @@
       ctx.shadowBlur = 12;
       ctx.fillText(planets[activePlanetIndex].text, boxX + padding, boxY - 8);
       ctx.shadowBlur = 0;
+      ctx.restore();
+
+      // Draw typing text with blinking cursor
+      ctx.fillStyle = '#00f6ff';
+      ctx.font = `${fontSize}px "VT323", "Share Tech Mono", "Orbitron", "Courier New", monospace`;
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      let textY = boxY + padding;
+      for (let i = 0; i < displayLines.length; i++) {
+        ctx.fillText(displayLines[i], boxX + padding, textY);
+        textY += lineHeight;
+      }
+
+      // Blinking cursor
+      let cursorX = boxX + padding + ctx.measureText(displayLines[displayLines.length - 1] || '').width;
+      let cursorY = boxY + padding + (displayLines.length - 1) * lineHeight;
+      if (!typingDone) {
+        if (now - lastCursorBlink > cursorBlinkInterval) {
+          cursorVisible = !cursorVisible;
+          lastCursorBlink = now;
+        }
+        if (cursorVisible) {
+          ctx.fillRect(cursorX, cursorY, 10, fontSize + 2);
+        }
+        requestAnimationFrame(() => drawMessageBox(x, y, size));
+      } else {
+        // Show steady cursor at end when done
+        ctx.fillRect(cursorX, cursorY, 10, fontSize + 2);
+      }
+
       ctx.restore();
     }
 
