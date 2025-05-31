@@ -27,6 +27,9 @@
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
+    let loadingStart = null;
+    const loadingDuration = 5000; // 5 seconds
+
     const stars = [];
     const planets = [];
     const numStars = 5000; // Increased number of stars for a denser sky
@@ -216,7 +219,7 @@
 
     initStars();
     initPlanets();
-    animate();
+    // animate();  // <-- REMOVE or COMMENT OUT this line!
 
     canvas.addEventListener('touchstart', (e) => {
       if (!isPaused) {
@@ -390,7 +393,7 @@
       ctx.closePath();
       ctx.fill();
 
-      // Bottom-right
+      // Bottom-right (make it match the other corners)
       ctx.beginPath();
       ctx.moveTo(boxX + boxWidth, boxY + boxHeight);
       ctx.lineTo(boxX + boxWidth + triHeight, boxY + boxHeight - triSize / 2);
@@ -407,10 +410,7 @@
       ctx.stroke();
 
       ctx.beginPath();
-      ctx.moveTo(anchorX, anchorY); // tip
-      ctx.lineTo(anchorX - 10, anchorY - 18);
-      ctx.lineTo(anchorX + 10, anchorY - 18);
-      ctx.closePath();
+      ctx.arc(anchorX, anchorY, 3, 0, Math.PI * 2); // radius 7 for a small pointer
       ctx.fillStyle = '#00f6ff';
       ctx.globalAlpha = 0.85;
       ctx.fill();
@@ -465,6 +465,174 @@
       canvas.height = window.innerHeight;
       planets.forEach(planet => planet.reset()); // Reset all planets on resize
     });
+
+    // Remove or comment out the entire drawNeonLoading function and any calls to it.
+    // Only use drawNeonLoadingBar and animateLoading for your loading effect.
+
+    // Remove this function:
+    /*
+    function drawNeonLoading(progress) {
+      // ...all code for the neon circle...
+    }
+    */
+
+    // Make sure only drawNeonLoadingBar(progress) is used in animateLoading:
+    function animateLoading(ts) {
+      if (!loadingStart) loadingStart = ts;
+      let elapsed = ts - loadingStart;
+      let progress;
+      if (elapsed < loadingDuration) {
+        // Linear for first 3 seconds
+        progress = elapsed / loadingDuration;
+      } else if (elapsed < loadingDuration) {
+        // Ease out for last 2 seconds
+        let t = (elapsed - 3000) / 2000;
+        progress = 0.6 + 0.4 * (1 - Math.pow(1 - t, 2));
+      } else {
+        progress = 1;
+      }
+
+      drawNeonLoadingBar(progress);
+
+      if (elapsed < loadingDuration) {
+        requestAnimationFrame(animateLoading);
+      } else {
+        loading = false;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Show loading.png with slide effect, then start planets animation
+        showLoadingImageSequence(() => {
+          animate(); // Start your planets animation here
+        });
+      }
+    }
+
+    // At the end of your script, only call:
+    requestAnimationFrame(animateLoading);
+
+    // Do NOT call animate() anywhere else until loading is done!
+
+    function drawNeonLoadingBar(progress) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Outer neon box settings (same as message box)
+      const boxWidth = 340;
+      const boxHeight = 110;
+      const boxX = (canvas.width - boxWidth) / 2;
+      const boxY = (canvas.height - boxHeight) / 2;
+      const padding = 24;
+
+      // Outer neon box
+      ctx.save();
+      ctx.strokeStyle = '#00f6ff';
+      ctx.lineWidth = 3;
+      ctx.shadowColor = '#00f6ff';
+      ctx.shadowBlur = 20;
+      ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 12);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Draw equilateral triangles at corners
+      ctx.fillStyle = '#00f6ff';
+      const triSize = 10;
+      const triHeight = triSize * Math.sqrt(3) / 2;
+
+
+
+      // Neon loading text
+      ctx.font = '32px "VT323", "Share Tech Mono", "Orbitron", "Courier New", monospace';
+      ctx.fillStyle = '#00f6ff';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.shadowColor = '#00f6ff';
+      ctx.shadowBlur = 16;
+      ctx.fillText('LOADING', boxX + padding, boxY + padding - 8);
+
+      ctx.shadowBlur = 0;
+
+      // Loading bar background
+      const barWidth = boxWidth - 2 * padding;
+      const barHeight = 22;
+      const barX = boxX + padding;
+      const barY = boxY + boxHeight / 2;
+
+      ctx.save();
+      ctx.fillStyle = '#01222a';
+      ctx.fillRect(barX, barY, barWidth, barHeight);
+
+      // Neon loading bar
+      ctx.shadowColor = '#00f6ff';
+      ctx.shadowBlur = 16;
+      ctx.fillStyle = '#00f6ff';
+      ctx.fillRect(barX, barY, barWidth * progress, barHeight);
+      ctx.restore();
+
+      // Percent text
+      ctx.font = '22px "VT323", "Share Tech Mono", "Orbitron", "Courier New", monospace';
+      ctx.fillStyle = '#fff';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.shadowBlur = 0;
+      ctx.fillText(Math.floor(progress * 100) + '%', barX + barWidth, barY + barHeight / 2);
+
+      ctx.restore();
+    }
+
+    // Add this near the top of your script
+    const loadingImg = new Image();
+    loadingImg.src = 'loading.png'; // Make sure this path is correct
+
+    // Helper to animate the loading.png slide effect
+    function showLoadingImageSequence(callback) {
+      const duration = 1000; // 1 second for each phase
+      const totalDuration = duration * 3;
+      const imgWidth = 240;
+      const imgHeight = 240;
+
+      let startTime = null;
+
+      function animateImg(ts) {
+        if (!startTime) startTime = ts;
+        let elapsed = ts - startTime;
+
+        // Calculate position
+        let x, y;
+        y = canvas.height / 2 - imgHeight / 2;
+
+        if (elapsed < duration) {
+          // Slide in from right
+          const t = elapsed / duration;
+          x = canvas.width + imgWidth - (canvas.width / 2 + imgWidth / 2 + imgWidth) * t;
+        } else if (elapsed < duration * 2) {
+          // Stay in center
+          x = canvas.width / 2 - imgWidth / 2;
+        } else if (elapsed < duration * 3) {
+          // Slide out to left
+          const t = (elapsed - duration * 2) / duration;
+          x = canvas.width / 2 - imgWidth / 2 - (canvas.width / 2 + imgWidth) * t;
+        } else {
+          // Done, call callback
+          if (typeof callback === 'function') callback();
+          return;
+        }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        // Optional: neon glow
+        ctx.shadowColor = '#00f6ff';
+        ctx.shadowBlur = 32;
+        ctx.drawImage(loadingImg, x, y, imgWidth, imgHeight);
+        ctx.restore();
+
+        requestAnimationFrame(animateImg);
+      }
+
+      // Wait for image to load before starting animation
+      if (loadingImg.complete) {
+        requestAnimationFrame(animateImg);
+      } else {
+        loadingImg.onload = () => requestAnimationFrame(animateImg);
+      }
+    }
   </script>
 </body>
 
