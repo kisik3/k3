@@ -214,6 +214,19 @@
       planets[activePlanetIndex].update();
       planets[activePlanetIndex].draw();
 
+      // Draw anime2.gif in the bottom-right corner
+      const gifSize = 50;
+      ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.drawImage(
+        anime2Img,
+        canvas.width - gifSize - 8, // 8px margin from right
+        canvas.height - gifSize - 8, // 8px margin from bottom
+        gifSize,
+        gifSize
+      );
+      ctx.restore();
+
       requestAnimationFrame(animate);
     }
 
@@ -633,6 +646,10 @@
         loadingImg.onload = () => requestAnimationFrame(animateImg);
       }
     }
+
+    // Add this near the top of your script (once)
+    const anime2Img = new Image();
+    anime2Img.src = 'anime2.gif'; // Make sure this path is correct
   </script>
 </body>
 
