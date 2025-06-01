@@ -320,6 +320,7 @@
       const fontSize = 14;
       const lineHeight = 18;
       const message = planet.message || 'This is a neon-style message box!\nYou can put any text here.\nIt will wrap and look cool.';
+      var isMessageBoxBelow = false; // Flag to track if box is below planet
 
       // Only restart typing effect if needed
       if (shouldRestartTyping) {
@@ -357,15 +358,23 @@
       const boxHeight = typingLines.length * lineHeight + 2 * padding;
       const boxWidth = maxBoxWidth;
       const connectorLength = 80;
+
+      // Default: box above planet
       let boxX = x - boxWidth / 2;
       let boxY = y - size - boxHeight - connectorLength;
       let anchorX = x;
       let anchorY = y - size;
 
-      // Clamp box inside canvas
+      // If not enough space above, put box below planet
+      if (boxY < 0) {
+        boxY = y + size + connectorLength;
+        anchorY = y + size;
+        isMessageBoxBelow = true; // Set flag to indicate box is below planet
+      }
+
+      // Clamp box inside canvas horizontally
       if (boxX < 0) boxX = 0;
       if (boxX + boxWidth > canvas.width) boxX = canvas.width - boxWidth;
-      if (boxY < 0) boxY = 0;
 
       ctx.save();
       ctx.strokeStyle = '#00f6ff';
@@ -417,7 +426,10 @@
       // Connector line & complete triangle pointer
       ctx.beginPath();
       const anchorBaseX = Math.max(boxX + 20, Math.min(x, boxX + boxWidth - 20));
-      const anchorBaseY = boxY + boxHeight;
+      var anchorBaseY = boxY + boxHeight;
+      if (isMessageBoxBelow) {
+        anchorBaseY = boxY; // If box is below, connect to the top
+      }
       ctx.moveTo(anchorBaseX, anchorBaseY);
       ctx.lineTo(anchorX, anchorY);
       ctx.stroke();
@@ -470,6 +482,36 @@
         // ctx.fillRect(cursorX, cursorY, 3, fontSize + 2);
       }
 
+      ctx.restore();
+    }
+
+    // Add these near the top of your script (after defining canvas and ctx)
+    const tarusImg = new Image();
+    tarusImg.src = 'tarus.png'; // Make sure this path is correct
+
+    const libraImg = new Image();
+    libraImg.src = 'libra.png'; // Make sure this path is correct
+
+    // Set desired width/height for the background images
+    const bgImgWidth = 180;  // Adjust as needed
+    const bgImgHeight = 180; // Adjust as needed
+
+    // Vertically center
+    const centerY = canvas.height / 2 - bgImgHeight / 2;
+
+    // Draw tarus.png on the left, vertically centered
+    if (tarusImg.complete) {
+      ctx.save();
+      ctx.globalAlpha = 0.25; // Optional: make it subtle as a background
+      ctx.drawImage(tarusImg, 40, centerY, bgImgWidth, bgImgHeight);
+      ctx.restore();
+    }
+
+    // Draw libra.png on the right, vertically centered
+    if (libraImg.complete) {
+      ctx.save();
+      ctx.globalAlpha = 0.25; // Optional: make it subtle as a background
+      ctx.drawImage(libraImg, canvas.width - bgImgWidth - 40, centerY, bgImgWidth, bgImgHeight);
       ctx.restore();
     }
 
